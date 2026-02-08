@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="ConwayLifeWinForms.App/ConwayLifeWinForms.App.csproj" />
+  <Project Path="ConwayLifeWinForms.Tests/ConwayLifeWinForms.Tests.csproj" />
+</Solution>
