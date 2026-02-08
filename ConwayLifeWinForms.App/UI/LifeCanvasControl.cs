@@ -299,10 +299,23 @@ public sealed class LifeCanvasControl(ILifeEngine engine) : Control
 
     private void ClampOffsets()
     {
-        double maxX = Math.Max(0, (_engine.Width * CellSize) - ClientSize.Width);
-        double maxY = Math.Max(0, (_engine.Height * CellSize) - ClientSize.Height);
+        (double minX, double maxX) = CalculateAxisBounds(_engine.Width, ClientSize.Width);
+        (double minY, double maxY) = CalculateAxisBounds(_engine.Height, ClientSize.Height);
 
-        _viewOffsetX = Math.Clamp(_viewOffsetX, 0, maxX);
-        _viewOffsetY = Math.Clamp(_viewOffsetY, 0, maxY);
+        _viewOffsetX = Math.Clamp(_viewOffsetX, minX, maxX);
+        _viewOffsetY = Math.Clamp(_viewOffsetY, minY, maxY);
+    }
+
+    private (double Min, double Max) CalculateAxisBounds(int cellsCount, int viewportSize)
+    {
+        double worldSize = cellsCount * CellSize;
+        if (worldSize <= viewportSize)
+        {
+            double centeredOffset = -((viewportSize - worldSize) / 2d);
+            return (centeredOffset, centeredOffset);
+        }
+
+        double maxOffset = worldSize - viewportSize;
+        return (0d, maxOffset);
     }
 }
