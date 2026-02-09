@@ -6,7 +6,7 @@ using ConwayLifeWinForms.App.Core.Timing;
 using ConwayLifeWinForms.App.UI;
 
 namespace ConwayLifeWinForms.App;
-// CON - 20
+// CON-20: точка входа приложения
 internal static class Program
 {
     [STAThread]
