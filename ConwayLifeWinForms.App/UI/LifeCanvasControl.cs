@@ -119,6 +119,8 @@ public sealed class LifeCanvasControl(ILifeEngine engine) : Control
     /// </summary>
     public event EventHandler? ViewChanged;
 
+
+
     /// <summary>
     /// Устанавливает текущее состояние клавиши Space для управления панорамированием.
     /// </summary>
@@ -271,7 +273,6 @@ public sealed class LifeCanvasControl(ILifeEngine engine) : Control
         // Контекст графики текущего цикла отрисовки.
         Graphics g = e.Graphics;
         g.Clear(_deadBrush.Color);
-
         // Размер клетки в пикселях для текущего кадра.
         int cell = CellSize;
 
@@ -308,21 +309,32 @@ public sealed class LifeCanvasControl(ILifeEngine engine) : Control
             }
         }
 
+        int boardLeft = - (int)_viewOffsetX;
+        int boardTop  = - (int)_viewOffsetY;
+        int boardW = _engine.Width * cell;
+        int boardH = _engine.Height * cell;
+
+        var boardRect = new Rectangle(boardLeft, boardTop, boardW, boardH);
+        var bounds = Rectangle.Intersect(boardRect, ClientRectangle);
+
+
         // Сетку рисуем только при достаточном размере клетки для читаемости.
         if (cell >= 6)
         {
+            int y1 = bounds.Top;
+            int y2 = bounds.Bottom - 1;
             for (int x = startX; x <= endX + 1; x++)
             {
-                // Экранная координата X для вертикальной линии сетки.
                 int sx = (int)(x * cell - _viewOffsetX);
-                g.DrawLine(_gridPen, sx, 0, sx, ClientSize.Height);
+                g.DrawLine(_gridPen, sx, y1, sx, y2);
             }
 
+            int x1 = bounds.Left;
+            int x2 = bounds.Right - 1;
             for (int y = startY; y <= endY + 1; y++)
             {
-                // Экранная координата Y для горизонтальной линии сетки.
                 int sy = (int)(y * cell - _viewOffsetY);
-                g.DrawLine(_gridPen, 0, sy, ClientSize.Width, sy);
+                g.DrawLine(_gridPen, x1, sy, x2, sy);
             }
         }
     }
@@ -553,25 +565,6 @@ public sealed class LifeCanvasControl(ILifeEngine engine) : Control
     /// - если мир меньше/равен viewport, Min == Max и соответствует центрированию;
     /// - если мир больше viewport, диапазон равен [0..maxOffset].
     /// </returns>
-    private (double Min, double Max) CalculateAxisBounds(int cellsCount, int viewportSize)
-    {
-        // Размер мира по оси в пикселях с учетом текущего масштаба.
-        double worldSize = cellsCount * CellSize;
-        if (worldSize <= viewportSize)
-        {
-            // Смещение, при котором мир центрируется внутри viewport.
-            double centeredOffset = -((viewportSize - worldSize) / 2d);
-            return (centeredOffset, centeredOffset);
-        }
-
-        // Максимальное смещение для прокрутки по оси, если мир больше viewport.
-        (double minX, double maxX) = CalculateAxisBounds(_engine.Width, ClientSize.Width);
-        (double minY, double maxY) = CalculateAxisBounds(_engine.Height, ClientSize.Height);
-
-        _viewOffsetX = Math.Clamp(_viewOffsetX, minX, maxX);
-        _viewOffsetY = Math.Clamp(_viewOffsetY, minY, maxY);
-    }
-
     private (double Min, double Max) CalculateAxisBounds(int cellsCount, int viewportSize)
     {
         double worldSize = cellsCount * CellSize;
