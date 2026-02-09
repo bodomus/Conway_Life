@@ -533,38 +533,22 @@ public sealed class LifeCanvasControl(ILifeEngine engine) : Control
     /// <remarks>Возвращаемое значение: отсутствует.</remarks>
     private void ClampOffsets()
     {
-        // Допустимые границы смещения по горизонтальной оси.
         (double minX, double maxX) = CalculateAxisBounds(_engine.Width, ClientSize.Width);
-
-        // Допустимые границы смещения по вертикальной оси.
         (double minY, double maxY) = CalculateAxisBounds(_engine.Height, ClientSize.Height);
 
         _viewOffsetX = Math.Clamp(_viewOffsetX, minX, maxX);
         _viewOffsetY = Math.Clamp(_viewOffsetY, minY, maxY);
     }
 
-    /// <summary>
-    /// Вычисляет диапазон offset для одной оси viewport.
-    /// </summary>
-    /// <param name="cellsCount">Количество клеток мира по рассматриваемой оси.</param>
-    /// <param name="viewportSize">Размер viewport по этой оси в пикселях.</param>
-    /// <returns>
-    /// Кортеж (Min, Max):
-    /// - если мир меньше/равен viewport, Min == Max и соответствует центрированию;
-    /// - если мир больше viewport, диапазон равен [0..maxOffset].
-    /// </returns>
     private (double Min, double Max) CalculateAxisBounds(int cellsCount, int viewportSize)
     {
-        // Размер мира по оси в пикселях с учетом текущего масштаба.
         double worldSize = cellsCount * CellSize;
         if (worldSize <= viewportSize)
         {
-            // Смещение, при котором мир центрируется внутри viewport.
             double centeredOffset = -((viewportSize - worldSize) / 2d);
             return (centeredOffset, centeredOffset);
         }
 
-        // Максимальное смещение для прокрутки по оси, если мир больше viewport.
         double maxOffset = worldSize - viewportSize;
         return (0d, maxOffset);
     }
