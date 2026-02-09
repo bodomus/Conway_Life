@@ -565,6 +565,22 @@ public sealed class LifeCanvasControl(ILifeEngine engine) : Control
         }
 
         // Максимальное смещение для прокрутки по оси, если мир больше viewport.
+        (double minX, double maxX) = CalculateAxisBounds(_engine.Width, ClientSize.Width);
+        (double minY, double maxY) = CalculateAxisBounds(_engine.Height, ClientSize.Height);
+
+        _viewOffsetX = Math.Clamp(_viewOffsetX, minX, maxX);
+        _viewOffsetY = Math.Clamp(_viewOffsetY, minY, maxY);
+    }
+
+    private (double Min, double Max) CalculateAxisBounds(int cellsCount, int viewportSize)
+    {
+        double worldSize = cellsCount * CellSize;
+        if (worldSize <= viewportSize)
+        {
+            double centeredOffset = -((viewportSize - worldSize) / 2d);
+            return (centeredOffset, centeredOffset);
+        }
+
         double maxOffset = worldSize - viewportSize;
         return (0d, maxOffset);
     }
