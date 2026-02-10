@@ -9,9 +9,11 @@ public sealed class MainForm : Form
 {
     private const int MinGridSize = 10;
     private const int MaxGridSize = 2000;
+    private const string PatternDragFormat = "application/x-conway-life-pattern";
 
     private readonly ILifeEngine _engine;
     private readonly IStateStorage _stateStorage;
+    private readonly IUiPreferencesStorage _uiPreferencesStorage;
     private readonly IPatternProvider _patternProvider;
     private readonly ITickSource _tickSource;
 
@@ -25,26 +27,36 @@ public sealed class MainForm : Form
     private readonly Button _loadButton = new() { Text = "Load", Width = 80 };
     private readonly Button _randomButton = new() { Text = "Randomize", Width = 90 };
     private readonly Button _applySizeButton = new() { Text = "Apply", Width = 80 };
-    private readonly Button _insertPatternButton = new() { Text = "Insert", Width = 80 };
 
     private readonly NumericUpDown _speedInput = new() { Minimum = 1, Maximum = 60, Value = 10, Width = 60 };
     private readonly NumericUpDown _randomDensityInput = new() { Minimum = 1, Maximum = 100, Value = 25, Width = 60 };
     private readonly NumericUpDown _widthInput = new() { Minimum = MinGridSize, Maximum = MaxGridSize, Width = 70 };
     private readonly NumericUpDown _heightInput = new() { Minimum = MinGridSize, Maximum = MaxGridSize, Width = 70 };
     private readonly CheckBox _clearOnResize = new() { Text = "Clear on resize", AutoSize = true };
-    private readonly ComboBox _patternCombo = new() { Width = 140, DropDownStyle = ComboBoxStyle.DropDownList };
+
+    private readonly SplitContainer _splitContainer = new() { Dock = DockStyle.Fill, FixedPanel = FixedPanel.Panel2 };
+    private readonly ComboBox _patternCategoryFilter = new() { Dock = DockStyle.Top, DropDownStyle = ComboBoxStyle.DropDownList };
+    private readonly ListBox _patternListBox = new() { Dock = DockStyle.Fill, DisplayMember = nameof(LifePattern.Name) };
 
     private readonly Dictionary<string, IUiCommand> _commands = [];
     private readonly ILogger<MainForm> _log;
-    public MainForm(ILifeEngine engine, IStateStorage stateStorage, IPatternProvider patternProvider, ITickSource tickSource, ILogger<MainForm> log)
+
+    public MainForm(
+        ILifeEngine engine,
+        IStateStorage stateStorage,
+        IUiPreferencesStorage uiPreferencesStorage,
+        IPatternProvider patternProvider,
+        ITickSource tickSource,
+        ILogger<MainForm> log)
     {
         _engine = engine;
         _stateStorage = stateStorage;
+        _uiPreferencesStorage = uiPreferencesStorage;
         _patternProvider = patternProvider;
         _tickSource = tickSource;
         _canvas = new LifeCanvasControl(_engine);
         _log = log;
-        _log.LogInformation("MainForm created.");
+
         Text = "Conway's Game of Life";
         Width = 1400;
         Height = 900;
@@ -53,18 +65,20 @@ public sealed class MainForm : Form
 
         _canvas.Dock = DockStyle.Fill;
         _canvas.TabStop = true;
+        _canvas.AllowDrop = true;
 
         _widthInput.Value = _engine.Width;
         _heightInput.Value = _engine.Height;
 
-        _patternCombo.DisplayMember = nameof(LifePattern.Name);
-        _patternCombo.DataSource = _patternProvider.GetPatterns().ToList();
-
         InitializeLayout();
+        InitializePatternPanel();
+        ApplySavedSplitWidth();
         WireEvents();
         ConfigureTimer();
         CreateCommands();
         UpdateStatus();
+
+        ShowPatternLoadErrors();
     }
 
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
@@ -77,7 +91,6 @@ public sealed class MainForm : Form
                 Keys.Control | Keys.O => ExecuteCommand("load"),
                 Keys.Control | Keys.N => ExecuteCommand("new"),
                 Keys.Control | Keys.R => ExecuteCommand("random"),
-                Keys.Control | Keys.P => ExecuteCommand("pattern-select"),
                 Keys.Control | Keys.Add => ExecuteCommand("zoom-in"),
                 Keys.Control | Keys.Oemplus => ExecuteCommand("zoom-in"),
                 Keys.Control | Keys.Subtract => ExecuteCommand("zoom-out"),
@@ -104,20 +117,14 @@ public sealed class MainForm : Form
 
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
+        SaveSplitWidth();
         _tickSource.Dispose();
         base.OnFormClosed(e);
     }
 
     private void InitializeLayout()
     {
-        FlowLayoutPanel topBar = new()
-        {
-            Dock = DockStyle.Top,
-            Height = 74,
-            Padding = new Padding(8),
-            WrapContents = true,
-            AutoSize = false
-        };
+        FlowLayoutPanel topBar = new() { Dock = DockStyle.Top, Height = 74, Padding = new Padding(8), WrapContents = true, AutoSize = false };
 
         topBar.Controls.Add(_startPauseButton);
         topBar.Controls.Add(_stepButton);
@@ -129,8 +136,6 @@ public sealed class MainForm : Form
         topBar.Controls.Add(_randomButton);
         topBar.Controls.Add(new Label { Text = "Density %", AutoSize = true, Padding = new Padding(6, 8, 2, 0) });
         topBar.Controls.Add(_randomDensityInput);
-        topBar.Controls.Add(_patternCombo);
-        topBar.Controls.Add(_insertPatternButton);
         topBar.Controls.Add(new Label { Text = "Width", AutoSize = true, Padding = new Padding(6, 8, 2, 0) });
         topBar.Controls.Add(_widthInput);
         topBar.Controls.Add(new Label { Text = "Height", AutoSize = true, Padding = new Padding(6, 8, 2, 0) });
@@ -141,9 +146,33 @@ public sealed class MainForm : Form
         StatusStrip statusStrip = new();
         statusStrip.Items.Add(_statusLabel);
 
-        Controls.Add(_canvas);
-        Controls.Add(topBar);
+        Panel workspacePanel = new() { Dock = DockStyle.Fill };
+        workspacePanel.Controls.Add(_splitContainer);
+        workspacePanel.Controls.Add(topBar);
+
+        _splitContainer.Panel1.Controls.Add(_canvas);
+
+        Controls.Add(workspacePanel);
         Controls.Add(statusStrip);
+    }
+
+    private void InitializePatternPanel()
+    {
+        _splitContainer.SplitterWidth = 6;
+        _splitContainer.Panel2MinSize = 220;
+
+        Label title = new() { Dock = DockStyle.Top, Text = "Паттерны", Font = new Font(Font, FontStyle.Bold), Height = 26, Padding = new Padding(6, 6, 6, 0) };
+        Label hint = new() { Dock = DockStyle.Bottom, Height = 34, Text = "Перетащите паттерн на поле (якорь: верхний левый).", Padding = new Padding(6, 6, 6, 6) };
+
+        _patternCategoryFilter.Items.AddRange(["All", .. Enum.GetNames<PatternCategory>()]);
+        _patternCategoryFilter.SelectedIndex = 0;
+
+        _splitContainer.Panel2.Controls.Add(_patternListBox);
+        _splitContainer.Panel2.Controls.Add(hint);
+        _splitContainer.Panel2.Controls.Add(_patternCategoryFilter);
+        _splitContainer.Panel2.Controls.Add(title);
+
+        RebindPatternList();
     }
 
     private void WireEvents()
@@ -154,7 +183,6 @@ public sealed class MainForm : Form
         _saveButton.Click += (_, _) => ExecuteCommand("save");
         _loadButton.Click += (_, _) => ExecuteCommand("load");
         _randomButton.Click += (_, _) => ExecuteCommand("random");
-        _insertPatternButton.Click += (_, _) => ExecuteCommand("pattern-insert");
         _applySizeButton.Click += (_, _) => ExecuteCommand("resize");
 
         _speedInput.ValueChanged += (_, _) => ConfigureTimer();
@@ -165,23 +193,19 @@ public sealed class MainForm : Form
         _canvas.ViewChanged += (_, _) => UpdateStatus();
 
         _tickSource.Tick += (_, _) => _engine.Step();
+        _splitContainer.SplitterMoved += (_, _) => SaveSplitWidth();
 
-        KeyDown += (_, e) =>
-        {
-            if (e.KeyCode == Keys.Space)
-            {
-                _canvas.SetSpacePressed(true);
-            }
-        };
+        _patternCategoryFilter.SelectedIndexChanged += (_, _) => RebindPatternList();
+        _patternListBox.MouseDown += OnPatternListMouseDown;
 
-        KeyUp += (_, e) =>
-        {
-            if (e.KeyCode == Keys.Space)
-            {
-                _canvas.SetSpacePressed(false);
-            }
-        };
+        _canvas.DragEnter += OnCanvasDragEnter;
+        _canvas.DragOver += OnCanvasDragOver;
+        _canvas.DragDrop += OnCanvasDragDrop;
+
+        KeyDown += (_, e) => { if (e.KeyCode == Keys.Space) { _canvas.SetSpacePressed(true); } };
+        KeyUp += (_, e) => { if (e.KeyCode == Keys.Space) { _canvas.SetSpacePressed(false); } };
     }
+
     private void CreateCommands()
     {
         _commands["start-pause"] = new DelegateUiCommand("StartPause", ToggleStartPause);
@@ -191,8 +215,6 @@ public sealed class MainForm : Form
         _commands["load"] = new DelegateUiCommand("Load", LoadFromJson);
         _commands["random"] = new DelegateUiCommand("Randomize", Randomize);
         _commands["resize"] = new DelegateUiCommand("Resize", ApplyResize);
-        _commands["pattern-insert"] = new DelegateUiCommand("PatternInsert", InsertPatternAtViewportCenter);
-        _commands["pattern-select"] = new DelegateUiCommand("PatternSelect", OpenPatternSelection);
         _commands["help"] = new DelegateUiCommand("Help", ShowHelp);
         _commands["escape"] = new DelegateUiCommand("Escape", EscapeAction);
         _commands["zoom-in"] = new DelegateUiCommand("ZoomIn", () => _canvas.ChangeZoom(+2));
@@ -253,33 +275,15 @@ public sealed class MainForm : Form
 
     private void SaveToJson()
     {
-        using SaveFileDialog dialog = new()
-        {
-            Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
-            DefaultExt = "json",
-            AddExtension = true,
-            FileName = "life-state.json"
-        };
-
-        if (dialog.ShowDialog(this) != DialogResult.OK)
-        {
-            return;
-        }
-
+        using SaveFileDialog dialog = new() { Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*", DefaultExt = "json", AddExtension = true, FileName = "life-state.json" };
+        if (dialog.ShowDialog(this) != DialogResult.OK) { return; }
         _stateStorage.Save(dialog.FileName, _engine.CreateSnapshot());
     }
 
     private void LoadFromJson()
     {
-        using OpenFileDialog dialog = new()
-        {
-            Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*"
-        };
-
-        if (dialog.ShowDialog(this) != DialogResult.OK)
-        {
-            return;
-        }
+        using OpenFileDialog dialog = new() { Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*" };
+        if (dialog.ShowDialog(this) != DialogResult.OK) { return; }
 
         LifeSnapshot snapshot = _stateStorage.Load(dialog.FileName);
         _engine.LoadSnapshot(snapshot);
@@ -288,49 +292,16 @@ public sealed class MainForm : Form
         _canvas.PreserveViewportAfterResize(snapshot.Width, snapshot.Height, _canvas.GetViewportCenterWorld());
     }
 
-    private void Randomize()
-    {
-        double density = (double)_randomDensityInput.Value / 100d;
-        _engine.Randomize(density);
-    }
+    private void Randomize() => _engine.Randomize((double)_randomDensityInput.Value / 100d);
 
     private void ApplyResize()
     {
         int newWidth = (int)_widthInput.Value;
         int newHeight = (int)_heightInput.Value;
         bool clear = _clearOnResize.Checked;
-
         (double x, double y) centerBefore = _canvas.GetViewportCenterWorld();
         _engine.Resize(newWidth, newHeight, clear);
         _canvas.PreserveViewportAfterResize(newWidth, newHeight, centerBefore);
-    }
-
-    private void InsertPatternAtViewportCenter()
-    {
-        if (_patternCombo.SelectedItem is not LifePattern pattern)
-        {
-            return;
-        }
-
-        Point center = _canvas.GetViewportCenterCell();
-        int minX = pattern.AliveCells.Min(static p => p.X);
-        int minY = pattern.AliveCells.Min(static p => p.Y);
-        int maxX = pattern.AliveCells.Max(static p => p.X);
-        int maxY = pattern.AliveCells.Max(static p => p.Y);
-
-        int width = maxX - minX + 1;
-        int height = maxY - minY + 1;
-
-        int originX = center.X - (width / 2) - minX;
-        int originY = center.Y - (height / 2) - minY;
-
-        _engine.PlacePattern(pattern, originX, originY);
-    }
-
-    private void OpenPatternSelection()
-    {
-        _patternCombo.Focus();
-        _patternCombo.DroppedDown = true;
     }
 
     private void ShowHelp()
@@ -342,14 +313,14 @@ public sealed class MainForm : Form
             + "Ctrl+O - Load JSON\n"
             + "Ctrl+N - New/Clear\n"
             + "Ctrl+R - Randomize\n"
-            + "Ctrl+P - Pattern selection\n"
             + "Esc - Stop simulation and cancel pan mode\n"
             + "F1 - This help\n"
             + "Ctrl++ / Ctrl+- / Ctrl+0 - Zoom in/out/reset\n"
             + "Ctrl+Wheel - Zoom\n"
             + "Arrows - Pan viewport\n"
             + "MMB drag or Space+LMB - Pan\n"
-            + "LMB - Toggle cell, LMB drag - draw alive, RMB drag - erase";
+            + "LMB - Toggle cell, LMB drag - draw alive, RMB drag - erase\n"
+            + "DnD: drag pattern from side panel to stamp on grid.";
 
         MessageBox.Show(this, helpText, "Help", MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
@@ -366,5 +337,104 @@ public sealed class MainForm : Form
         _statusLabel.Text =
             $"Generation: {_engine.Generation}, Alive: {_engine.AliveCount}, Speed: {speed} steps/s, "
             + $"Zoom: {_canvas.CellSize} px, Grid: {_engine.Width}x{_engine.Height}";
+    }
+
+    private void RebindPatternList()
+    {
+        IEnumerable<LifePattern> patterns = _patternProvider.GetPatterns();
+        if (_patternCategoryFilter.SelectedItem is string categoryName
+            && !string.Equals(categoryName, "All", StringComparison.OrdinalIgnoreCase)
+            && Enum.TryParse(categoryName, out PatternCategory category))
+        {
+            patterns = patterns.Where(pattern => pattern.Category == category);
+        }
+
+        _patternListBox.DataSource = patterns.ToList();
+    }
+
+    private void OnPatternListMouseDown(object? sender, MouseEventArgs e)
+    {
+        int index = _patternListBox.IndexFromPoint(e.Location);
+        if (index < 0)
+        {
+            return;
+        }
+
+        _patternListBox.SelectedIndex = index;
+        if (_patternListBox.SelectedItem is LifePattern selected)
+        {
+            DataObject data = new();
+            data.SetData(PatternDragFormat, selected);
+            _patternListBox.DoDragDrop(data, DragDropEffects.Copy);
+        }
+    }
+
+    private void OnCanvasDragEnter(object? sender, DragEventArgs e)
+    {
+        e.Effect = e.Data?.GetDataPresent(PatternDragFormat) == true ? DragDropEffects.Copy : DragDropEffects.None;
+    }
+
+    private void OnCanvasDragOver(object? sender, DragEventArgs e)
+    {
+        if (_tickSource.Enabled)
+        {
+            e.Effect = DragDropEffects.None;
+            return;
+        }
+
+        if (e.Data?.GetDataPresent(PatternDragFormat) == true)
+        {
+            e.Effect = DragDropEffects.Copy;
+            return;
+        }
+
+        e.Effect = DragDropEffects.None;
+    }
+
+    private void OnCanvasDragDrop(object? sender, DragEventArgs e)
+    {
+        if (_tickSource.Enabled)
+        {
+            _statusLabel.Text = "Drop ignored while simulation is running.";
+            return;
+        }
+
+        if (e.Data?.GetData(PatternDragFormat) is not LifePattern pattern)
+        {
+            return;
+        }
+
+        if (!_canvas.TryGetCellFromScreenPoint(new Point(e.X, e.Y), out Point cell))
+        {
+            return;
+        }
+
+        _engine.PlacePattern(pattern, cell.X, cell.Y);
+        _canvas.Focus();
+    }
+
+    private void ShowPatternLoadErrors()
+    {
+        IReadOnlyList<string> errors = _patternProvider.GetLoadErrors();
+        if (errors.Count == 0)
+        {
+            return;
+        }
+
+        string message = "Некоторые RLE-паттерны не были загружены:\n\n" + string.Join(Environment.NewLine, errors);
+        MessageBox.Show(this, message, "Ошибка загрузки паттернов", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+    }
+
+    private void ApplySavedSplitWidth()
+    {
+        UiPreferences preferences = _uiPreferencesStorage.Load();
+        int width = Math.Max(_splitContainer.Panel2MinSize, preferences.PatternPanelWidth);
+        _splitContainer.SplitterDistance = Math.Max(100, ClientSize.Width - width);
+    }
+
+    private void SaveSplitWidth()
+    {
+        int panelWidth = _splitContainer.Width - _splitContainer.SplitterDistance;
+        _uiPreferencesStorage.Save(new UiPreferences(panelWidth));
     }
 }

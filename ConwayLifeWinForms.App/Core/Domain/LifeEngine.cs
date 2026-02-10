@@ -1,5 +1,6 @@
 using ConwayLifeWinForms.App.Core.Abstractions;
 using ConwayLifeWinForms.App.Core.Models;
+using ConwayLifeWinForms.App.Core.Patterns;
 
 namespace ConwayLifeWinForms.App.Core.Domain;
 
@@ -120,21 +121,8 @@ public sealed class LifeEngine : ILifeEngine
     }
     public void PlacePattern(LifePattern pattern, int originX, int originY)
     {
-        foreach (CellPoint point in pattern.AliveCells)
-        {
-            int x = originX + point.X;
-            int y = originY + point.Y;
-
-            if (x < 0 || y < 0 || x >= Width || y >= Height)
-            {
-                continue;
-            }
-
-            if (_grid.SetCell(x, y, alive: true))
-            {
-                AliveCount++;
-            }
-        }
+        PatternStampCommand stamp = new(this, pattern, originX, originY);
+        AliveCount += stamp.Execute();
 
         OnStateChanged(LifeChangeKind.Pattern);
     }

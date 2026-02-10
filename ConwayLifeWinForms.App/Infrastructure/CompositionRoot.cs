@@ -26,6 +26,7 @@ internal static class CompositionRoot
         services.AddSingleton<ILifeEngine>(sp =>
             new LifeEngine(width: 80, height: 60, sp.GetRequiredService<ILifeRules>()));
         services.AddSingleton<IStateStorage, JsonStateStorage>();
+        services.AddSingleton<IUiPreferencesStorage, JsonUiPreferencesStorage>();
         services.AddSingleton<IPatternProvider, DefaultPatternProvider>();
         services.AddSingleton<ITickSource, FormsTimerTickSource>();
 
