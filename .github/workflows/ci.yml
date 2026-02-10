@@ -1,28 +1,38 @@
-name: ci
+name: CI (build + test)
 
 on:
   push:
-    branches: ["**"]
+    branches: [ "main", "master" ]
   pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  build-test:
+  build_test:
     runs-on: windows-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v5
         with:
-          global-json-file: global.json
+          dotnet-version: "10.0.x"
+          cache: true
 
       - name: Restore
-        run: dotnet restore ConwayLifeWinForms.slnx
+        shell: pwsh
+        run: dotnet restore "ConwayLifeWinForms.slnx"
 
-      - name: Build
-        run: dotnet build ConwayLifeWinForms.slnx -c Release --no-restore
+      - name: Build (Release)
+        shell: pwsh
+        run: dotnet build "ConwayLifeWinForms.slnx" -c Release --no-restore
 
-      - name: Test
-        run: dotnet test ConwayLifeWinForms.slnx -c Release --no-build
+      - name: Test (Release)
+        shell: pwsh
+        run: dotnet test "ConwayLifeWinForms.slnx" -c Release --no-build --verbosity normal
+
