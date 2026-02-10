@@ -119,6 +119,13 @@ public sealed class LifeCanvasControl(ILifeEngine engine) : Control
     /// </summary>
     public event EventHandler? ViewChanged;
 
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer, true);
+        DoubleBuffered = true;
+        base.OnHandleCreated(e);
+    }
+
 
 
     /// <summary>
@@ -236,6 +243,19 @@ public sealed class LifeCanvasControl(ILifeEngine engine) : Control
 
         // Округление к ближайшей клетке.
         return new Point((int)Math.Round(x), (int)Math.Round(y));
+    }
+
+    public bool TryGetCellFromScreenPoint(Point screenPoint, out Point cell)
+    {
+        Point clientPoint = PointToClient(screenPoint);
+        if (TryScreenToCell(clientPoint, out int x, out int y))
+        {
+            cell = new Point(x, y);
+            return true;
+        }
+
+        cell = default;
+        return false;
     }
 
     /// <summary>

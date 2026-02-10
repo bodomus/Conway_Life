@@ -9,7 +9,7 @@ public sealed class LifeEngineTests
     public void Block_StillLife_RemainsUnchangedAfterStep()
     {
         LifeEngine engine = new(8, 8, new ClassicLifeRules());
-        engine.PlacePattern(new LifePattern("Block", [new(2, 2), new(3, 2), new(2, 3), new(3, 3)]), 0, 0);
+        engine.PlacePattern(new LifePattern("Block", PatternCategory.StillLife, "B3/S23", [new(2, 2), new(3, 2), new(2, 3), new(3, 3)]), 0, 0);
 
         engine.Step();
 
@@ -25,7 +25,7 @@ public sealed class LifeEngineTests
     public void Blinker_OscillatesBetweenHorizontalAndVertical()
     {
         LifeEngine engine = new(10, 10, new ClassicLifeRules());
-        engine.PlacePattern(new LifePattern("Blinker", [new(1, 2), new(2, 2), new(3, 2)]), 0, 0);
+        engine.PlacePattern(new LifePattern("Blinker", PatternCategory.Oscillator, "B3/S23", [new(1, 2), new(2, 2), new(3, 2)]), 0, 0);
 
         engine.Step();
 
@@ -47,7 +47,7 @@ public sealed class LifeEngineTests
     public void Glider_ShiftsByOneCellDiagonalAfterFourSteps()
     {
         LifeEngine engine = new(20, 20, new ClassicLifeRules());
-        engine.PlacePattern(new LifePattern("Glider", [new(1, 0), new(2, 1), new(0, 2), new(1, 2), new(2, 2)]), 1, 1);
+        engine.PlacePattern(new LifePattern("Glider", PatternCategory.Spaceship, "B3/S23", [new(1, 0), new(2, 1), new(0, 2), new(1, 2), new(2, 2)]), 1, 1);
 
         for (int i = 0; i < 4; i++)
         {
