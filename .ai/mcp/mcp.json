@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "youtrack": {
+      "command": "cmd.exe",
+      "args": [
+        "/c",
+        "npx",
+        "mcp-remote@latest",
+        "https://bodomus.youtrack.cloud/mcp",
+        "--header",
+        "Authorization: %AUTH_HEADER%"
+      ],
+      "env": {
+        "AUTH_HEADER": "Bearer perm-Ym9kb211cw==.NDgtNQ==.lQvgUzYr6s1AMXHmAszCmX9X27Nmd4"
+      }
+    }
+  }
+}

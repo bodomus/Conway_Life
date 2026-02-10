@@ -6,5 +6,7 @@ public interface IPatternProvider
 {
     IReadOnlyList<LifePattern> GetPatterns();
 
+    IReadOnlyList<string> GetLoadErrors();
+
     LifePattern GetByName(string name);
 }

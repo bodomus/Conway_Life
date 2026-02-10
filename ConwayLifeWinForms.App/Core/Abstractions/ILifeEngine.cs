@@ -2,12 +2,8 @@ using ConwayLifeWinForms.App.Core.Models;
 
 namespace ConwayLifeWinForms.App.Core.Abstractions;
 
-public interface ILifeEngine
+public interface ILifeEngine : ILifeGrid
 {
-    int Width { get; }
-
-    int Height { get; }
-
     long Generation { get; }
 
     int AliveCount { get; }
@@ -15,8 +11,6 @@ public interface ILifeEngine
     event EventHandler<StateChangedEventArgs>? StateChanged;
 
     bool GetCell(int x, int y);
-
-    bool SetCell(int x, int y, bool alive);
 
     void Step();
 
