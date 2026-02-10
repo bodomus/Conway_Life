@@ -1,6 +1,7 @@
 using ConwayLifeWinForms.App.Application.Commands;
 using ConwayLifeWinForms.App.Core.Abstractions;
 using ConwayLifeWinForms.App.Core.Models;
+using Microsoft.Extensions.Logging;
 
 namespace ConwayLifeWinForms.App.UI;
 
@@ -34,15 +35,16 @@ public sealed class MainForm : Form
     private readonly ComboBox _patternCombo = new() { Width = 140, DropDownStyle = ComboBoxStyle.DropDownList };
 
     private readonly Dictionary<string, IUiCommand> _commands = [];
-
-    public MainForm(ILifeEngine engine, IStateStorage stateStorage, IPatternProvider patternProvider, ITickSource tickSource)
+    private readonly ILogger _log;
+    public MainForm(ILifeEngine engine, IStateStorage stateStorage, IPatternProvider patternProvider, ITickSource tickSource, ILogger log)
     {
         _engine = engine;
         _stateStorage = stateStorage;
         _patternProvider = patternProvider;
         _tickSource = tickSource;
         _canvas = new LifeCanvasControl(_engine);
-
+        _log = log;
+        log.LogInformation("From main form");
         Text = "Conway's Game of Life";
         Width = 1400;
         Height = 900;
