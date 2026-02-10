@@ -7,7 +7,7 @@ namespace ConwayLifeWinForms.App.Bootstrapper
 {
     internal static class LoggingBootstrapper
     {
-        public static ILoggerFactory Init(string appName, Action<LoggerConfiguration>? configure = null)
+        public static void Init(string appName, Action<LoggerConfiguration>? configure = null)
         {
             var logDir = Path.Combine(AppContext.BaseDirectory, "logs");
             Directory.CreateDirectory(logDir);
@@ -28,14 +28,6 @@ namespace ConwayLifeWinForms.App.Bootstrapper
             configure?.Invoke(cfg);
 
             Log.Logger = cfg.CreateLogger();
-
-            var factory = Microsoft.Extensions.Logging.LoggerFactory.Create(builder =>
-            {
-                builder.ClearProviders();
-                builder.AddSerilog(Log.Logger, dispose: true);
-            });
-
-            return factory;
         }
 
         public static void HookGlobalHandlers(ILogger logger)
