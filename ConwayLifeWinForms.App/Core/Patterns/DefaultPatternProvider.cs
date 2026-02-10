@@ -10,7 +10,6 @@ public sealed class DefaultPatternProvider : IPatternProvider
 
     public DefaultPatternProvider()
     {
-        RleParser parser = new();
         List<LifePattern> patterns = [];
         List<string> errors = [];
 
@@ -22,7 +21,7 @@ public sealed class DefaultPatternProvider : IPatternProvider
             {
                 string rle = File.ReadAllText(path);
                 string name = Path.GetFileNameWithoutExtension(fileName).Replace('_', ' ');
-                patterns.Add(parser.Parse(name, category, rle));
+                patterns.Add(RleParser.Parse(name, category, rle));
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FormatException)
             {

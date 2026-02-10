@@ -9,9 +9,7 @@ public sealed class RleParserTests
     [Fact]
     public void Parse_ValidRle_ReturnsAliveCells()
     {
-        RleParser parser = new();
-
-        LifePattern pattern = parser.Parse(
+        LifePattern pattern = RleParser.Parse(
             "Blinker",
             PatternCategory.Oscillator,
             "x = 3, y = 1, rule = B3/S23\n3o!");
@@ -24,9 +22,7 @@ public sealed class RleParserTests
     [Fact]
     public void Parse_InvalidBody_ThrowsFormatException()
     {
-        RleParser parser = new();
-
-        Assert.Throws<FormatException>(() => parser.Parse("Broken", PatternCategory.StillLife, "x = 1, y = 1\no"));
+        Assert.Throws<FormatException>(() => RleParser.Parse("Broken", PatternCategory.StillLife, "x = 1, y = 1\no"));
     }
 
     [Fact]

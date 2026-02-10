@@ -12,8 +12,6 @@ public interface ILifeEngine : ILifeGrid
 
     bool GetCell(int x, int y);
 
-    bool SetCell(int x, int y, bool alive);
-
     void Step();
 
     void Clear();

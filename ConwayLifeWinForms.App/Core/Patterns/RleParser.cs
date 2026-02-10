@@ -7,7 +7,7 @@ public sealed class RleParser
 {
     private static readonly Regex HeaderRegex = new(@"x\s*=\s*(\d+)\s*,\s*y\s*=\s*(\d+)(?:\s*,\s*rule\s*=\s*([^,\s]+))?", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
-    public LifePattern Parse(string name, PatternCategory category, string rleContent)
+    public static LifePattern Parse(string name, PatternCategory category, string rleContent)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(rleContent);
