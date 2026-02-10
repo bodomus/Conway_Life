@@ -5,6 +5,7 @@ using ConwayLifeWinForms.App.Core.Storage;
 using ConwayLifeWinForms.App.Core.Timing;
 using ConwayLifeWinForms.App.UI;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Serilog;
 
 namespace ConwayLifeWinForms.App.Infrastructure;

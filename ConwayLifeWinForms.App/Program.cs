@@ -24,7 +24,7 @@ internal static class Program
 
         try
         {
-            Application.Run(serviceProvider.GetRequiredService<MainForm>());
+            System.Windows.Forms.Application.Run(serviceProvider.GetRequiredService<MainForm>());
         }
         finally
         {
