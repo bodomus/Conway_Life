@@ -1,3 +1,4 @@
+using ConwayLifeWinForms.App.Bootstrapper;
 using ConwayLifeWinForms.App.Core.Abstractions;
 using ConwayLifeWinForms.App.Core.Domain;
 using ConwayLifeWinForms.App.Core.Patterns;
@@ -17,30 +18,10 @@ internal static class Program
     private static void Main()
     {
         ApplicationConfiguration.Initialize();
-        // Папка для логов рядом с exe
-        var logDir = Path.Combine(AppContext.BaseDirectory, "logs");
-        Directory.CreateDirectory(logDir);
-
-        Log.Logger = new LoggerConfiguration()
-            .MinimumLevel.Debug()
-            .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
-            .Enrich.FromLogContext()
-            .WriteTo.Console()
-            .WriteTo.File(
-                path: Path.Combine(logDir, "app-.log"),
-                rollingInterval: RollingInterval.Day,
-                retainedFileCountLimit: 14,
-                shared: true
-            )
-            .CreateLogger();
-
-        LoggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(builder =>
-        {
-            builder.ClearProviders();
-            builder.AddSerilog(Log.Logger, dispose: true);
-        });
-
+        LoggerFactory = LoggingBootstrapper.Init("GameLife");
         var log = LoggerFactory.CreateLogger("App");
+
+        LoggingBootstrapper.HookGlobalHandlers(log);
         log.LogInformation("Game Life starting...");
 
         System.Windows.Forms.Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);

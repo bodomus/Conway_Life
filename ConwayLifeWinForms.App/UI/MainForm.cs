@@ -35,8 +35,8 @@ public sealed class MainForm : Form
     private readonly ComboBox _patternCombo = new() { Width = 140, DropDownStyle = ComboBoxStyle.DropDownList };
 
     private readonly Dictionary<string, IUiCommand> _commands = [];
-    private readonly ILogger<MainForm> _log;
-    public MainForm(ILifeEngine engine, IStateStorage stateStorage, IPatternProvider patternProvider, ITickSource tickSource, ILogger<MainForm> log)
+    private readonly ILogger _log;
+    public MainForm(ILifeEngine engine, IStateStorage stateStorage, IPatternProvider patternProvider, ITickSource tickSource, ILogger log)
     {
         _engine = engine;
         _stateStorage = stateStorage;
@@ -44,7 +44,7 @@ public sealed class MainForm : Form
         _tickSource = tickSource;
         _canvas = new LifeCanvasControl(_engine);
         _log = log;
-
+        log.LogInformation("From main form");
         Text = "Conway's Game of Life";
         Width = 1400;
         Height = 900;
